@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 保持强制桌面模式体验：允许缩放，设置最小视口宽度 -->
+    <meta name="viewport" content="width=1200, initial-scale=0.3, user-scalable=yes">
+    <title>病理科专家门诊排班表</title>
+    <style>
+        /* --- 基础重置与变量 --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-color: #1a8a8d;
+            --primary-light: #e8f7f7;
+            --primary-hover: #156f72;
+            --text-main: #333;
+            --text-secondary: #666;
+            --text-light: #999;
+            --price-color: #f5802c;
+            --pudong-color: #7c3aed;
+            --pudong-bg: #f3e8ff;
+            --bg-body: #f5f7f8;
+            --border-color: #e5e5e5;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            line-height: 1.5;
+            /* 强制最小宽度，确保手机浏览器不换行，保持左右布局 */
+            min-width: 1100px; 
+            overflow-x: auto;
+        }
+
+        /* --- 顶部 Header --- */
+        .header {
+            background: linear-gradient(135deg, #157f82 0%, #2a9699 100%);
+            color: white;
+            padding: 40px 20px 80px; 
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            right: 5%;
+            top: -50%;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        /* --- 主体容器 --- */
+        .container {
+            max-width: 1400px;
+            margin: -50px auto 30px;
+            padding: 0 20px;
+            display: flex; /* 强制左右布局 */
+            align-items: flex-start;
+            gap: 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- 左侧侧边栏 --- */
+        .sidebar {
+            width: 300px; 
+            flex-shrink: 0; 
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            position: sticky; /* 滚动时固定 */
+            top: 20px;
+        }
+
+        .sidebar-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 18px 22px;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-content { padding: 22px; }
+        .filter-group { margin-bottom: 24px; }
+        .filter-label {
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .clear-btn {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 12px;
+            border: none;
+            background: none;
+            font-weight: normal;
+        }
+
+        .search-input-wrapper { position: relative; }
+        .search-input {
+            width: 100%;
+            padding: 11px 12px 11px 36px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: #f9f9f9;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(26,138,141,0.1);
+        }
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            width: 16px;
+        }
+
+        .day-filters {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .day-btn {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .day-btn:hover { color: var(--primary-color); border-color: var(--primary-color); }
+        .day-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .checkbox-scroll-area {
+            max-height: 320px; /* 增加高度以容纳更多科室 */
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .checkbox-scroll-area::-webkit-scrollbar { width: 4px; }
+        .checkbox-scroll-area::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-main);
+            transition: color 0.2s;
+        }
+        .checkbox-item input {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+        .checkbox-item:hover { color: var(--primary-color); }
+
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #f5f5f5;
+            color: var(--text-secondary);
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+        .reset-btn:hover { background-color: #eee; color: #333; }
+
+        /* --- 右侧内容区 --- */
+        .main-content { flex: 1; min-width: 0; }
+
+        .toolbar {
+            background: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .view-switch { display: flex; gap: 8px; }
+        .view-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .view-btn:hover { background-color: #f5f5f5; }
+        .view-btn.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 600;
+            border-color: #d0eded;
+        }
+        .view-btn svg { width: 16px; height: 16px; }
+
+        .result-count { font-size: 14px; color: var(--text-secondary); }
+        .result-count b { color: var(--primary-color); }
+
+        /* --- 专家卡片网格 --- */
+        .doctor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 20px;
+        }
+        
+        .doctor-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+            display: flex;
+            flex-direction: column;
+        }
+        .doctor-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+            border-color: #bfe5e6;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .doctor-info { display: flex; gap: 14px; flex: 1; }
+        .avatar {
+            width: 50px;
+            height: 50px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .avatar.pending { background-color: #ccc; }
+
+        .info-text h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+        
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .tag.retired {
+            background-color: #fff7e6;
+            color: #fa8c16;
+        }
+
+        .price-box { text-align: right; padding-left: 10px; }
+        .price { color: var(--price-color); font-size: 22px; font-weight: bold; line-height: 1; }
+        .price.tbd { color: #999; font-size: 16px; font-weight: 500; }
+        .price-label { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+
+        .schedule-list {
+            border-top: 1px solid #f0f0f0;
+            padding-top: 16px;
+            flex: 1;
+        }
+        .schedule-title {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .schedule-item {
+            font-size: 14px;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .schedule-item::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            margin-right: 10px;
+        }
+        .schedule-item.pudong { color: var(--pudong-color); }
+        .schedule-item.pudong::before { background-color: var(--pudong-color); }
+        .schedule-item.pending { color: #999; }
+        .schedule-item.pending::before { background-color: #ccc; }
+        
+        .card-footer {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #f5f5f5;
+            color: var(--text-light);
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* --- 表格视图 --- */
+        .table-view-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            overflow-x: auto;
+            display: none; 
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th {
+            background-color: #f8fafa;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-main);
+            border-bottom: 2px solid #eee;
+        }
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: top;
+            height: 100px;
+            width: 18%; 
+        }
+        td:first-child {
+            width: 10%;
+            background: #fcfcfc;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+        
+        /* 表格小块 */
+        .doc-chip {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .doc-chip:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        .doc-chip.pudong { border-left-color: var(--pudong-color); }
+        .chip-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .chip-name { font-weight: 600; font-size: 14px; color: #333; }
+        .chip-price { color: var(--price-color); font-size: 13px; font-weight: bold; }
+        .chip-price.tbd { color: #999; }
+        .chip-dept { font-size: 12px; color: #888; }
+        .chip-loc { font-size: 12px; color: var(--pudong-color); margin-top: 4px; font-weight: 500;}
+
+        /* --- Modal 弹窗 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: white;
+            width: 90%;
+            max-width: 420px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            transform: translateY(20px) scale(0.98);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+        .modal-header {
+            background: linear-gradient(135deg, #1a8a8d 0%, #2d9a9c 100%);
+            padding: 24px;
+            color: white;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .close-modal {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .close-modal:hover { background: rgba(255,255,255,0.3); }
+        .modal-avatar {
+            width: 56px; height: 56px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold;
+        }
+        .modal-body { padding: 24px; }
+        .modal-row { margin-bottom: 24px; }
+        .modal-label { 
+            color: #888; font-size: 13px; 
+            display: flex; align-items: center; gap: 6px; 
+            margin-bottom: 8px; font-weight: 500;
+        }
+        .modal-price { font-size: 28px; color: var(--price-color); font-weight: bold; }
+        .modal-price.tbd { color: #999; font-size: 20px; }
+        .modal-schedule-box { background: #f8fafa; padding: 16px; border-radius: 8px; }
+        .modal-time-tag { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; color: #333; }
+        .modal-time-tag:last-child { margin-bottom: 0; }
+        .badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .badge.pudong { color: var(--pudong-color); background: var(--pudong-bg); }
+        .badge.pending { background: #eee; color: #999; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-content">
+            <h1>病理科专家门诊排班表</h1>
+            <p>汇集国内顶尖病理诊断专家，提供乳腺、淋巴瘤、软组织等亚专科的精准病理会诊服务。</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 左侧侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                筛选查找
+            </div>
+            <div class="sidebar-content">
+                <!-- 搜索 -->
+                <div class="filter-group">
+                    <div class="filter-label">搜索专家</div>
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="searchInput" class="search-input" placeholder="输入姓名 (如: 朱雄增)">
+                    </div>
+                </div>
+
+                <!-- 时间筛选 -->
+                <div class="filter-group">
+                    <div class="filter-label">出诊时间</div>
+                    <div class="day-filters" id="dayFilters">
+                        <button class="day-btn" data-day="周一">周一</button>
+                        <button class="day-btn" data-day="周二">周二</button>
+                        <button class="day-btn" data-day="周三">周三</button>
+                        <button class="day-btn" data-day="周四">周四</button>
+                        <button class="day-btn" data-day="周五">周五</button>
+                    </div>
+                </div>
+
+                <!-- 亚专科筛选 -->
+                <div class="filter-group">
+                    <div class="filter-label">
+                        亚专科方向
+                        <button class="clear-btn" id="clearDeptBtn">清除</button>
+                    </div>
+                    <div class="checkbox-scroll-area" id="deptFilters">
+                        <!-- 所有科室 -->
+                        <label class="checkbox-item"><input type="checkbox" value="退休返聘老教授"> 退休返聘老教授</label>
+                        <label class="checkbox-item"><input type="checkbox" value="乳腺" checked> 乳腺</label>
+                        <label class="checkbox-item"><input type="checkbox" value="骨软组织"> 骨软组织</label>
+                        <label class="checkbox-item"><input type="checkbox" value="淋巴瘤"> 淋巴瘤</label>
+                        <label class="checkbox-item"><input type="checkbox" value="妇科"> 妇科</label>
+                        <label class="checkbox-item"><input type="checkbox" value="胸部"> 胸部</label>
+                        <label class="checkbox-item"><input type="checkbox" value="消化"> 消化</label>
+                        <label class="checkbox-item"><input type="checkbox" value="头颈"> 头颈</label>
+                        <label class="checkbox-item"><input type="checkbox" value="皮肤"> 皮肤</label>
+                        <label class="checkbox-item"><input type="checkbox" value="泌尿"> 泌尿</label>
+                        <label class="checkbox-item"><input type="checkbox" value="神经"> 神经</label>
+                    </div>
+                </div>
+
+                <button class="reset-btn" id="resetAllBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    重置所有筛选
+                </button>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <main class="main-content">
+            <div class="toolbar">
+                <div class="view-switch">
+                    <div class="view-btn active" data-view="grid" onclick="switchView('grid')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        专家列表
+                    </div>
+                    <div class="view-btn" data-view="table" onclick="switchView('table')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        周排班表
+                    </div>
+                </div>
+                <div class="result-count">共找到 <b id="countValue">0</b> 位专家</div>
+            </div>
+
+            <!-- 网格视图 -->
+            <div id="gridView" class="doctor-grid">
+                <!-- JS 渲染 -->
+            </div>
+
+            <!-- 表格视图 -->
+            <div id="tableView" class="table-view-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>周一</th>
+                            <th>周二</th>
+                            <th>周三</th>
+                            <th>周四</th>
+                            <th>周五</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- JS 渲染 -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- 弹窗 (Modal) -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-avatar" id="modalAvatar">沈</div>
+                <div>
+                    <h2 style="font-size: 22px; margin-bottom: 4px;" id="modalName">沈磊</h2>
+                    <div style="font-size: 14px; opacity: 0.9;" id="modalDepts">胸部</div>
+                </div>
+                <button class="close-modal" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-row">
+                    <div class="modal-label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                        挂号费
+                    </div>
+                    <div class="modal-price" id="modalPrice">¥1000</div>
+                </div>
+                <div class="modal-row" style="margin-bottom: 0;">
+                    <div class="modal-label" style="margin-bottom: 12px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        出诊时间
+                    </div>
+                    <div class="modal-schedule-box" id="modalSchedule">
+                        <!-- JS 渲染 -->
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 0 24px 24px;">
+                <button onclick="closeModal()" style="width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 数据源 (基于您提供的最新数据整理) ---
+        // 涂小予没有价格和时间，设为 TBD
+        // 刘绮颖/刘琦颖 视为同一人，统一用刘琦颖
+        // 全天排班在逻辑上处理为 上午+下午 显示
+        const doctors = [
+            {
+                id: 1, name: "朱雄增", depts: ["退休返聘老教授"], price: 1500,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 2, name: "杨文涛", depts: ["乳腺"], price: 1200,
+                schedule: [
+                    { day: "周二", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 3, name: "水若鸿", depts: ["乳腺", "淋巴瘤"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周三", period: "全天", location: "本院" },
+                    { day: "周四", period: "下午", location: "本院" }
+                ]
+            },
+            {
+                id: 4, name: "于宝华", depts: ["乳腺", "淋巴瘤"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "下午", location: "本院" },
+                    { day: "周二", period: "下午", location: "本院" },
+                    { day: "周四", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 5, name: "毕蕊", depts: ["乳腺", "妇科"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "全天", location: "本院" },
+                    { day: "周三", period: "上午", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 6, name: "周淑玲", depts: ["乳腺"], price: 800,
+                schedule: [
+                    { day: "周一", period: "全天", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周五", period: "下午", location: "本院" }
+                ]
+            },
+            {
+                id: 7, name: "涂小予", depts: ["乳腺", "妇科"], price: "待定",
+                schedule: []
+            },
+            {
+                id: 8, name: "成宇帆", depts: ["乳腺", "妇科"], price: 1000,
+                schedule: [
+                    { day: "周三", period: "下午", location: "本院" },
+                    { day: "周四", period: "全天", location: "本院" },
+                    { day: "周五", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 9, name: "孙向洁", depts: ["乳腺"], price: 800,
+                schedule: [
+                    { day: "周五", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 10, name: "王坚", depts: ["骨软组织"], price: 1200,
+                schedule: [
+                    { day: "周一", period: "全天", location: "本院" },
+                    { day: "周三", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 11, name: "刘琦颖", depts: ["骨软组织", "神经"], price: 800,
+                schedule: [
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周三", period: "全天", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 12, name: "李小秋", depts: ["淋巴瘤", "头颈"], price: 1200,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周三", period: "上午", location: "本院" },
+                    { day: "周四", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 13, name: "蒋翔男", depts: ["淋巴瘤"], price: 800,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 14, name: "黄丹", depts: ["妇科", "消化"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周二", period: "上午", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 15, name: "葛慧娟", depts: ["妇科"], price: 800,
+                schedule: [
+                    { day: "周一", period: "下午", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周四", period: "下午", location: "本院" },
+                    { day: "周五", period: "下午", location: "本院" }
+                ]
+            },
+            {
+                id: 16, name: "沈磊", depts: ["胸部"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周二", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 17, name: "孔蕴毅", depts: ["胸部", "皮肤"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "全天", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周三", period: "全天", location: "本院" }
+                ]
+            },
+            {
+                id: 18, name: "李媛", depts: ["胸部", "头颈"], price: 1200,
+                schedule: [
+                    { day: "周一", period: "上午", location: "浦东" },
+                    { day: "周二", period: "上午", location: "浦东" },
+                    { day: "周三", period: "上午", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 19, name: "金燕", depts: ["胸部"], price: 800,
+                schedule: [
+                    { day: "周三", period: "下午", location: "本院" },
+                    { day: "周五", period: "下午", location: "本院" }
+                ]
+            },
+            {
+                id: 20, name: "沈旭霞", depts: ["胸部"], price: 800,
+                schedule: [
+                    { day: "周四", period: "下午", location: "本院" },
+                    { day: "周五", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 21, name: "倪淑娟", depts: ["消化", "泌尿"], price: 800,
+                schedule: [
+                    { day: "周一", period: "上午", location: "本院" },
+                    { day: "周二", period: "全天", location: "本院" },
+                    { day: "周四", period: "下午", location: "本院" }
+                ]
+            },
+            {
+                id: 22, name: "盛伟琪", depts: ["消化"], price: 1200,
+                schedule: [
+                    { day: "周二", period: "上午", location: "本院" },
+                    { day: "周三", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 23, name: "谭聪", depts: ["消化"], price: 800,
+                schedule: [
+                    { day: "周一", period: "下午", location: "本院" },
+                    { day: "周三", period: "下午", location: "本院" },
+                    { day: "周五", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 24, name: "陈彤箴", depts: ["消化", "头颈"], price: 1000,
+                schedule: [
+                    { day: "周二", period: "上午", location: "本院" },
+                    { day: "周三", period: "上午", location: "本院" },
+                    { day: "周五", period: "上午", location: "本院" }
+                ]
+            },
+            {
+                id: 25, name: "王奇峰", depts: ["头颈", "泌尿"], price: 1000,
+                schedule: [
+                    { day: "周一", period: "全天", location: "本院" },
+                    { day: "周三", period: "全天", location: "本院" },
+                    { day: "周四", period: "上午", location: "本院" }
+                ]
+            }
+        ];
+
+        // --- 2. 状态管理 ---
+        let currentFilter = {
+            search: "",
+            days: [],
+            // 默认选中乳腺演示，可改为空数组 []
+            depts: ["乳腺"] 
+        };
+        let currentView = 'grid';
+
+        // --- 3. 渲染逻辑 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+            setupEventListeners();
+        });
+
+        function render() {
+            const filteredDocs = doctors.filter(doc => {
+                const matchSearch = doc.name.includes(currentFilter.search);
+                const matchDept = currentFilter.depts.length === 0 || doc.depts.some(d => currentFilter.depts.includes(d));
+                const matchDay = currentFilter.days.length === 0 || doc.schedule.some(s => currentFilter.days.includes(s.day));
+                return matchSearch && matchDept && matchDay;
+            });
+
+            document.getElementById('countValue').textContent = filteredDocs.length;
+            renderGrid(filteredDocs);
+            renderTable(filteredDocs);
+        }
+
+        function renderGrid(data) {
+            const container = document.getElementById('gridView');
+            if (data.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: #999;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🔍</div>
+                    未找到匹配的专家
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = data.map(doc => {
+                let scheduleHtml = '';
+                if (doc.schedule.length === 0) {
+                     scheduleHtml = `<div class="schedule-item pending">排班待定</div>`;
+                } else {
+                    scheduleHtml = doc.schedule.map(s => `
+                        <div class="schedule-item ${s.location === '浦东' ? 'pudong' : ''}">
+                            ${s.day}${s.period} ${s.location !== '本院' ? `(${s.location})` : ''}
+                        </div>
+                    `).join('');
+                }
+
+                const isTbd = typeof doc.price === 'string';
+
+                return `
+                <div class="doctor-card" onclick="openModal(${doc.id})">
+                    <div class="card-header">
+                        <div class="doctor-info">
+                            <div class="avatar ${isTbd ? 'pending' : ''}">${doc.name[0]}</div>
+                            <div class="info-text">
+                                <h3>${doc.name}</h3>
+                                <div class="tags">
+                                    ${doc.depts.map(d => `<span class="tag ${d === '退休返聘老教授' ? 'retired' : ''}">${d}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="price-box">
+                            <div class="price ${isTbd ? 'tbd' : ''}">${isTbd ? doc.price : '¥' + doc.price}</div>
+                            <div class="price-label">挂号费</div>
+                        </div>
+                    </div>
+                    <div class="schedule-list">
+                        <div class="schedule-title">📅 出诊时间</div>
+                        ${scheduleHtml}
+                    </div>
+                    <div class="card-footer">
+                        <span>点击查看详情</span>
+                        <span>→</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            const periods = ['上午', '下午'];
+            const days = ['周一', '周二', '周三', '周四', '周五'];
+            let html = '';
+
+            periods.forEach(period => {
+                html += `<tr><td><div style="display:flex; flex-direction:column; align-items:center; gap:4px;"><span style="font-size:18px">${period === '上午' ? '☀️' : '🌙'}</span>${period}</div></td>`;
+                days.forEach(day => {
+                    html += `<td>`;
+                    const docsInSlot = data.filter(doc => 
+                        doc.schedule.some(s => s.day === day && (s.period === period || s.period === '全天'))
+                    );
+                    
+                    docsInSlot.forEach(doc => {
+                        const scheduleInfo = doc.schedule.find(s => s.day === day);
+                        const isPudong = scheduleInfo && scheduleInfo.location === '浦东';
+                        const isTbd = typeof doc.price === 'string';
+
+                        html += `
+                        <div class="doc-chip ${isPudong ? 'pudong' : ''}" onclick="openModal(${doc.id})">
+                            <div class="chip-top">
+                                <span class="chip-name">${doc.name}</span>
+                                <span class="chip-price ${isTbd ? 'tbd' : ''}">${isTbd ? doc.price : '¥' + doc.price}</span>
+                            </div>
+                            <div class="chip-dept">${doc.depts[0]}</div>
+                            ${isPudong ? `<div class="chip-loc">浦东院区</div>` : ''}
+                        </div>`;
+                    });
+                    html += `</td>`;
+                });
+                html += `</tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // --- 4. 交互逻辑 ---
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                currentFilter.search = e.target.value.trim();
+                render();
+            });
+
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.classList.toggle('active');
+                    const day = btn.dataset.day;
+                    if (btn.classList.contains('active')) {
+                        currentFilter.days.push(day);
+                    } else {
+                        currentFilter.days = currentFilter.days.filter(d => d !== day);
+                    }
+                    render();
+                });
+            });
+
+            document.getElementById('deptFilters').addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const dept = e.target.value;
+                    if (e.target.checked) {
+                        currentFilter.depts.push(dept);
+                    } else {
+                        currentFilter.depts = currentFilter.depts.filter(d => d !== dept);
+                    }
+                    render();
+                }
+            });
+
+            document.getElementById('clearDeptBtn').addEventListener('click', () => {
+                document.querySelectorAll('#deptFilters input').forEach(input => input.checked = false);
+                currentFilter.depts = [];
+                render();
+            });
+
+            document.getElementById('resetAllBtn').addEventListener('click', () => {
+                currentFilter = { search: "", days: [], depts: [] };
+                document.getElementById('searchInput').value = "";
+                document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#deptFilters input').forEach(i => i.checked = false);
+                render();
+            });
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            
+            document.getElementById('gridView').style.display = view === 'grid' ? 'grid' : 'none';
+            document.getElementById('tableView').style.display = view === 'table' ? 'block' : 'none';
+        }
+
+        // --- 5. Modal 逻辑 ---
+        function openModal(id) {
+            const doc = doctors.find(d => d.id === id);
+            if (!doc) return;
+
+            document.getElementById('modalAvatar').innerText = doc.name[0];
+            document.getElementById('modalName').innerText = doc.name;
+            document.getElementById('modalDepts').innerText = doc.depts.join('、');
+            
+            const priceEl = document.getElementById('modalPrice');
+            if (typeof doc.price === 'string') {
+                priceEl.textContent = doc.price;
+                priceEl.classList.add('tbd');
+            } else {
+                priceEl.textContent = '¥' + doc.price;
+                priceEl.classList.remove('tbd');
+            }
+
+            let scheduleHtml = '';
+            if (doc.schedule.length === 0) {
+                 scheduleHtml = `<span class="badge pending">排班待定</span>`;
+            } else {
+                 scheduleHtml = doc.schedule.map(s => `
+                    <div class="modal-time-tag">
+                        <span class="badge ${s.location === '浦东' ? 'pudong' : ''}">
+                            ${s.day} ${s.period} ${s.location !== '本院' ? `(${s.location})` : ''}
+                        </span>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('modalSchedule').innerHTML = scheduleHtml;
+
+            document.getElementById('modalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modalOverlay')) {
+                closeModal();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
